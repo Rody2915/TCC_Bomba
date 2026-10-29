@@ -85,7 +85,7 @@ opcao_falha = st.selectbox(
         "Falha no Impeller (3 Severidades)",
         "Falha no Rolamento da Bomba - Bearing Pump (3 Severidades)",
         "Falha de Curto no Estator - Stator Short (2 Severidades)",
-        "Falha no Rolamento BPFI (Severidade 3)",
+        "Falha no Rolamento BPFI (3 Severidades)",
         "Falha no Rolamento BPFO (3 Severidades)",
         "Falha de Desalinhamento da Base - Soft Foot (2 Severidades)",
         "Defeitos Únicos / Outros Componentes (Loose Foot, New Motor, etc.)"
@@ -133,10 +133,11 @@ elif "Stator Short" in opcao_falha:
     titulo_grafico = "Análise Progressiva: Curto no Estator (Stator Short 1 e 2)"
 
 elif "BPFI" in opcao_falha:
-    # Mostra especificamente a severidade 3 destacada que você possui
+    s1 = pd.DataFrame({'RMS': np.random.normal(2.0, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(5.0, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 1'})
+    s2 = pd.DataFrame({'RMS': np.random.normal(3.8, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(7.8, 0.6, n_amostras_grafico), 'Legenda': 'Severidade 2'})
     s3 = pd.DataFrame({'RMS': np.random.normal(5.5, 0.5, n_amostras_grafico), 'Curtose': np.random.normal(9.2, 0.8, n_amostras_grafico), 'Legenda': 'Severidade 3'})
-    df_render = pd.concat([df_healthy, s3], ignore_index=True)
-    titulo_grafico = "Análise Crítica: Defeito na Pista Interna do Rolamento (Bearing BPFI 3)"
+    df_render = pd.concat([df_healthy, s1, s2, s3], ignore_index=True)
+    titulo_grafico = "Análise Crítica: Defeito na Pista Interna do Rolamento (Bearing BPFI 1, 2 e 3)"
 
 elif "BPFO" in opcao_falha:
     s1 = pd.DataFrame({'RMS': np.random.normal(2.2, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(4.8, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 1'})
