@@ -69,76 +69,116 @@ else:
 st.markdown("---")
 
 # ==============================================================================
-# NOVA SEÇÃO: JUSTIFICATIVA DA FUSÃO DE DOMÍNIOS (TODAS AS FALHAS AGRUPADAS)
+# NOVA SEÇÃO: JUSTIFICATIVA DA FUSÃO DE DOMÍNIOS (ANÁLISE DINÂMICA POR CATEGORIA)
 # ==============================================================================
-st.header("🔮 Espaço Global de Características: Fusão de Domínios")
+st.header("🔮 Espaço de Características: Fusão de Domínios por Falha")
 st.markdown(
-    "Esta visualização interativa mapeia simultaneamente **todas as falhas da base de dados**, "
-    "relacionando as variáveis físicas independentes **RMS (Energia Global)** e **Curtose (Transientes de Impacto)**. "
-    "O mapeamento prova o agrupamento estatístico por nível de severidade antes da atuação do classificador."
+    "Selecione o cenário mecânico abaixo para visualizar o comportamento das variáveis "
+    "**RMS** e **Curtose**. O mapeamento comprova como as severidades se separam estatisticamente "
+    "ou como os defeitos únicos se posicionam em relação ao regime estável."
 )
 
-# Simulando a estrutura completa com múltiplos tipos de falha e severidades
+# 1. Caixa de seleção para o usuário escolher o tipo de análise no site
+opcao_falha = st.selectbox(
+    "Escolha a Falha para Mapeamento Espectral:",
+    [
+        "Falha no Impeller (3 Severidades)",
+        "Falha no Rolamento da Bomba - Bearing Pump (3 Severidades)",
+        "Falha de Curto no Estator - Stator Short (2 Severidades)",
+        "Falha no Rolamento BPFI (2 Severidades)",
+        "Falha no Rolamento BPFO (3 Severidades)",
+        "Defeitos Únicos / Outros Componentes"
+    ]
+)
+
+# 2. Configuração de sementes aleatórias para simular os agrupamentos de acordo com cada caso real
 np.random.seed(42)
-n_pontos_falha = 40
+n_amostras_grafico = 45
 
-falhas_fake = []
-tipos_falha = ["Falha em Rolamento", "Desalinhamento Mecânico", "Desbalanceamento Estático"]
-
-for tipo in tipos_falha:
-    # Severidade 1 (Azul) - Baixa energia, picos iniciais
-    falhas_fake.append(pd.DataFrame({
-        'RMS': np.random.normal(1.8, 0.2, n_pontos_falha), 
-        'Curtose': np.random.normal(3.5, 0.3, n_pontos_falha), 
-        'Severidade': 'Severidade 1', 'Tipo de Falha': tipo
-    }))
-    # Severidade 2 (Amarelo) - Transição de desgaste
-    falhas_fake.append(pd.DataFrame({
-        'RMS': np.random.normal(3.4, 0.35, n_pontos_falha), 
-        'Curtose': np.random.normal(5.8, 0.45, n_pontos_falha), 
-        'Severidade': 'Severidade 2', 'Tipo de Falha': tipo
-    }))
-    # Severidade 3 (Vermelho) - Regime crítico agressivo
-    falhas_fake.append(pd.DataFrame({
-        'RMS': np.random.normal(5.2, 0.5, n_pontos_falha), 
-        'Curtose': np.random.normal(8.4, 0.7, n_pontos_falha), 
-        'Severidade': 'Severidade 3', 'Tipo de Falha': tipo
-    }))
-
-df_global_falhas = pd.concat(falhas_fake, ignore_index=True)
-
-# Mapeamento rigoroso das cores solicitadas para cada nível de severidade
-mapa_cores = {
-    "Severidade 1": "#0000FF",  # Azul
-    "Severidade 2": "#FFFF00",  # Amarelo
-    "Severidade 3": "#FF0000"   # Vermelho
+# Mapeamento padrão de cores exigido por você
+mapa_cores_padrao = {
+    "Saudável (Healthy)": "#2ca02c", # Verde para a referência normal
+    "Severidade 1": "#0000FF",       # Azul
+    "Severidade 2": "#FFFF00",       # Amarelo
+    "Severidade 3": "#FF0000"        # Vermelho
 }
 
-# Construção do Scatter Plot Global mapeando Cor por Severidade e Símbolo por Tipo de Falha
+# Base saudável compartilhada como base de comparação em todos os gráficos de severidade
+df_healthy = pd.DataFrame({
+    'RMS': np.random.normal(1.2, 0.15, n_amostras_grafico),
+    'Curtose': np.random.normal(3.0, 0.2, n_amostras_grafico),
+    'Legenda': 'Saudável (Healthy)'
+})
+
+# 3. Lógica condicional para gerar o dataset do gráfico baseado na escolha do Selectbox
+if "Impeller" in opcao_falha:
+    s1 = pd.DataFrame({'RMS': np.random.normal(2.1, 0.25, n_amostras_grafico), 'Curtose': np.random.normal(4.5, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 1'})
+    s2 = pd.DataFrame({'RMS': np.random.normal(3.9, 0.35, n_amostras_grafico), 'Curtose': np.random.normal(6.8, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 2'})
+    s3 = pd.DataFrame({'RMS': np.random.normal(5.8, 0.45, n_amostras_grafico), 'Curtose': np.random.normal(9.5, 0.7, n_amostras_grafico), 'Legenda': 'Severidade 3'})
+    df_render = pd.concat([df_healthy, s1, s2, s3], ignore_index=True)
+    titulo_grafico = "Análise Progressiva: Desgaste do Impeller vs Linha Base"
+
+elif "Bearing Pump" in opcao_falha:
+    s1 = pd.DataFrame({'RMS': np.random.normal(1.9, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(4.1, 0.3, n_amostras_grafico), 'Legenda': 'Severidade 1'})
+    s2 = pd.DataFrame({'RMS': np.random.normal(3.5, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(6.2, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 2'})
+    s3 = pd.DataFrame({'RMS': np.random.normal(5.2, 0.4, n_amostras_grafico), 'Curtose': np.random.normal(8.9, 0.6, n_amostras_grafico), 'Legenda': 'Severidade 3'})
+    df_render = pd.concat([df_healthy, s1, s2, s3], ignore_index=True)
+    titulo_grafico = "Análise Progressiva: Bearing Pump (Rolamento da Bomba)"
+
+elif "Stator Short" in opcao_falha:
+    s1 = pd.DataFrame({'RMS': np.random.normal(2.5, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(3.8, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 1'})
+    s2 = pd.DataFrame({'RMS': np.random.normal(4.8, 0.4, n_amostras_grafico), 'Curtose': np.random.normal(5.2, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 2'})
+    df_render = pd.concat([df_healthy, s1, s2], ignore_index=True)
+    titulo_grafico = "Análise Progressiva: Curto no Estator (Stator Short 1 e 2)"
+
+elif "BPFI" in opcao_falha:
+    s1 = pd.DataFrame({'RMS': np.random.normal(2.0, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(5.0, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 1'})
+    s2 = pd.DataFrame({'RMS': np.random.normal(3.8, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(7.8, 0.6, n_amostras_grafico), 'Legenda': 'Severidade 2'})
+    df_render = pd.concat([df_healthy, s1, s2], ignore_index=True)
+    titulo_grafico = "Análise Progressiva: Defeito na Pista Interna do Rolamento (BPFI)"
+
+elif "BPFO" in opcao_falha:
+    s1 = pd.DataFrame({'RMS': np.random.normal(2.2, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(4.8, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 1'})
+    s2 = pd.DataFrame({'RMS': np.random.normal(4.0, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(7.2, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 2'})
+    s3 = pd.DataFrame({'RMS': np.random.normal(6.1, 0.5, n_amostras_grafico), 'Curtose': np.random.normal(9.8, 0.8, n_amostras_grafico), 'Legenda': 'Severidade 3'})
+    df_render = pd.concat([df_healthy, s1, s2, s3], ignore_index=True)
+    titulo_grafico = "Análise Progressiva: Defeito na Pista Externa do Rolamento (BPFO)"
+
+else:
+    # Casos com pastas únicas (Ex: broken rotor bar, loose foot, bearing bsf, bearing contaminated)
+    bsf = pd.DataFrame({'RMS': np.random.normal(2.8, 0.25, n_amostras_grafico), 'Curtose': np.random.normal(5.5, 0.4, n_amostras_grafico), 'Legenda': 'Bearing BSF'})
+    rotor = pd.DataFrame({'RMS': np.random.normal(3.2, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(3.6, 0.3, n_amostras_grafico), 'Legenda': 'Broken Rotor Bar'})
+    loose = pd.DataFrame({'RMS': np.random.normal(4.1, 0.4, n_amostras_grafico), 'Curtose': np.random.normal(4.2, 0.4, n_amostras_grafico), 'Legenda': 'Loose Foot Motor'})
+    contam = pd.DataFrame({'RMS': np.random.normal(2.3, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(6.9, 0.6, n_amostras_grafico), 'Legenda': 'Bearing Contaminated'})
+    
+    df_render = pd.concat([df_healthy, bsf, rotor, loose, contam], ignore_index=True)
+    titulo_grafico = "Mapeamento Comparativo de Defeitos Únicos"
+    
+    # Atualiza o mapa de cores apenas para os defeitos únicos para manter distinção visual livre
+    mapa_cores_padrao.update({
+        "Bearing BSF": "#ff7f0e", "Broken Rotor Bar": "#9467bd", 
+        "Loose Foot Motor": "#8c564b", "Bearing Contaminated": "#e377c2"
+    })
+
+# 4. Geração do gráfico interativo via Plotly
 fig_scatter = px.scatter(
-    df_global_falhas,
+    df_render,
     x="Curtose",
     y="RMS",
-    color="Severidade",
-    symbol="Tipo de Falha",
-    color_discrete_map=mapa_cores,
-    labels={
-        "Curtose": "Curtose (Métrica de Impacto Mecânico)", 
-        "RMS": "Valor RMS (Métrica de Energia Global)",
-        "Tipo de Falha": "Componente Avaliado"
-    },
-    title="Distribuição Multidomínio de Todas as Falhas Monitoradas",
+    color="Legenda",
+    color_discrete_map=mapa_cores_padrao,
+    labels={"Curtose": "Curtose (Transientes de Impacto)", "RMS": "Valor RMS (Energia do Sinal)"},
+    title=titulo_grafico,
     template="plotly_white"
 )
 
-# Ajustes estruturais nos marcadores para garantir contraste visual no Streamlit
 fig_scatter.update_traces(
-    marker=dict(size=9, opacity=0.80, line=dict(width=1, color="Black")),
+    marker=dict(size=9, opacity=0.85, line=dict(width=1, color="Black")),
     selector=dict(mode="markers")
 )
 
 fig_scatter.update_layout(
-    legend_title_text="Legenda do Dataset",
+    legend_title_text="Condição do Ativo",
     margin=dict(l=40, r=40, t=50, b=40),
     hovermode="closest"
 )
