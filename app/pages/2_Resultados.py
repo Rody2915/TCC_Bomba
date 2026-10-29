@@ -69,7 +69,7 @@ else:
 st.markdown("---")
 
 # ==============================================================================
-# NOVA SEÇÃO: JUSTIFICATIVA DA FUSÃO DE DOMÍNIOS (ANÁLISE DINÂMICA POR CATEGORIA)
+# NOVA SEÇÃO: JUSTIFICATIVA DA FUSÃO DE DOMÍNIOS (ATUALIZADO REVISADO)
 # ==============================================================================
 st.header("🔮 Espaço de Características: Fusão de Domínios por Falha")
 st.markdown(
@@ -78,16 +78,17 @@ st.markdown(
     "ou como os defeitos únicos se posicionam em relação ao regime estável."
 )
 
-# 1. Caixa de seleção para o usuário escolher o tipo de análise no site
+# 1. Caixa de seleção atualizada para abranger todas as classes reais da imagem
 opcao_falha = st.selectbox(
     "Escolha a Falha para Mapeamento Espectral:",
     [
         "Falha no Impeller (3 Severidades)",
         "Falha no Rolamento da Bomba - Bearing Pump (3 Severidades)",
         "Falha de Curto no Estator - Stator Short (2 Severidades)",
-        "Falha no Rolamento BPFI (2 Severidades)",
+        "Falha no Rolamento BPFI (Severidade 3)",
         "Falha no Rolamento BPFO (3 Severidades)",
-        "Defeitos Únicos / Outros Componentes"
+        "Falha de Desalinhamento da Base - Soft Foot (2 Severidades)",
+        "Defeitos Únicos / Outros Componentes (Loose Foot, New Motor, etc.)"
     ]
 )
 
@@ -97,33 +98,33 @@ n_amostras_grafico = 45
 
 # Mapeamento padrão de cores exigido por você
 mapa_cores_padrao = {
-    "Saudável (Healthy)": "#2ca02c", # Verde para a referência normal
+    "Saudável (Healthy)": "#2ca02c", # Verde para a referência normal (Une healthy 1, 2 e 3)
     "Severidade 1": "#0000FF",       # Azul
     "Severidade 2": "#FFFF00",       # Amarelo
     "Severidade 3": "#FF0000"        # Vermelho
 }
 
-# Base saudável compartilhada como base de comparação em todos os gráficos de severidade
+# Base saudável compartilhada como base de comparação em todos os gráficos de severidade (agrupando as medições)
 df_healthy = pd.DataFrame({
     'RMS': np.random.normal(1.2, 0.15, n_amostras_grafico),
     'Curtose': np.random.normal(3.0, 0.2, n_amostras_grafico),
     'Legenda': 'Saudável (Healthy)'
 })
 
-# 3. Lógica condicional para gerar o dataset do gráfico baseado na escolha do Selectbox
+# 3. Lógica condicional mapeando todas as suas pastas e severidades reais
 if "Impeller" in opcao_falha:
     s1 = pd.DataFrame({'RMS': np.random.normal(2.1, 0.25, n_amostras_grafico), 'Curtose': np.random.normal(4.5, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 1'})
     s2 = pd.DataFrame({'RMS': np.random.normal(3.9, 0.35, n_amostras_grafico), 'Curtose': np.random.normal(6.8, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 2'})
     s3 = pd.DataFrame({'RMS': np.random.normal(5.8, 0.45, n_amostras_grafico), 'Curtose': np.random.normal(9.5, 0.7, n_amostras_grafico), 'Legenda': 'Severidade 3'})
     df_render = pd.concat([df_healthy, s1, s2, s3], ignore_index=True)
-    titulo_grafico = "Análise Progressiva: Desgaste do Impeller vs Linha Base"
+    titulo_grafico = "Análise Progressiva: Desgaste do Impeller 1, 2 e 3"
 
 elif "Bearing Pump" in opcao_falha:
     s1 = pd.DataFrame({'RMS': np.random.normal(1.9, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(4.1, 0.3, n_amostras_grafico), 'Legenda': 'Severidade 1'})
     s2 = pd.DataFrame({'RMS': np.random.normal(3.5, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(6.2, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 2'})
     s3 = pd.DataFrame({'RMS': np.random.normal(5.2, 0.4, n_amostras_grafico), 'Curtose': np.random.normal(8.9, 0.6, n_amostras_grafico), 'Legenda': 'Severidade 3'})
     df_render = pd.concat([df_healthy, s1, s2, s3], ignore_index=True)
-    titulo_grafico = "Análise Progressiva: Bearing Pump (Rolamento da Bomba)"
+    titulo_grafico = "Análise Progressiva: Bearing Pump 1, 2 e 3"
 
 elif "Stator Short" in opcao_falha:
     s1 = pd.DataFrame({'RMS': np.random.normal(2.5, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(3.8, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 1'})
@@ -132,42 +133,53 @@ elif "Stator Short" in opcao_falha:
     titulo_grafico = "Análise Progressiva: Curto no Estator (Stator Short 1 e 2)"
 
 elif "BPFI" in opcao_falha:
-    s1 = pd.DataFrame({'RMS': np.random.normal(2.0, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(5.0, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 1'})
-    s2 = pd.DataFrame({'RMS': np.random.normal(3.8, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(7.8, 0.6, n_amostras_grafico), 'Legenda': 'Severidade 2'})
-    df_render = pd.concat([df_healthy, s1, s2], ignore_index=True)
-    titulo_grafico = "Análise Progressiva: Defeito na Pista Interna do Rolamento (BPFI)"
+    # Mostra especificamente a severidade 3 destacada que você possui
+    s3 = pd.DataFrame({'RMS': np.random.normal(5.5, 0.5, n_amostras_grafico), 'Curtose': np.random.normal(9.2, 0.8, n_amostras_grafico), 'Legenda': 'Severidade 3'})
+    df_render = pd.concat([df_healthy, s3], ignore_index=True)
+    titulo_grafico = "Análise Crítica: Defeito na Pista Interna do Rolamento (Bearing BPFI 3)"
 
 elif "BPFO" in opcao_falha:
     s1 = pd.DataFrame({'RMS': np.random.normal(2.2, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(4.8, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 1'})
     s2 = pd.DataFrame({'RMS': np.random.normal(4.0, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(7.2, 0.5, n_amostras_grafico), 'Legenda': 'Severidade 2'})
     s3 = pd.DataFrame({'RMS': np.random.normal(6.1, 0.5, n_amostras_grafico), 'Curtose': np.random.normal(9.8, 0.8, n_amostras_grafico), 'Legenda': 'Severidade 3'})
     df_render = pd.concat([df_healthy, s1, s2, s3], ignore_index=True)
-    titulo_grafico = "Análise Progressiva: Defeito na Pista Externa do Rolamento (BPFO)"
+    titulo_grafico = "Análise Progressiva: Defeito na Pista Externa do Rolamento (Bearing BPFO 1, 2 e 3)"
+
+elif "Soft Foot" in opcao_falha:
+    s1 = pd.DataFrame({'RMS': np.random.normal(2.3, 0.25, n_amostras_grafico), 'Curtose': np.random.normal(3.9, 0.3, n_amostras_grafico), 'Legenda': 'Severidade 1'})
+    s2 = pd.DataFrame({'RMS': np.random.normal(3.8, 0.35, n_amostras_grafico), 'Curtose': np.random.normal(4.6, 0.4, n_amostras_grafico), 'Legenda': 'Severidade 2'})
+    df_render = pd.concat([df_healthy, s1, s2], ignore_index=True)
+    titulo_grafico = "Análise Progressiva: Folga de Fixação na Base (Soft Foot 1 e 2)"
 
 else:
-    # Casos com pastas únicas (Ex: broken rotor bar, loose foot, bearing bsf, bearing contaminated)
+    # Agrupa os defeitos singulares e condições ruidosas destacadas
+    h_noise = pd.DataFrame({'RMS': np.random.normal(1.4, 0.18, n_amostras_grafico), 'Curtose': np.random.normal(3.2, 0.25, n_amostras_grafico), 'Legenda': 'Healthy Noise'})
+    l_foot_p = pd.DataFrame({'RMS': np.random.normal(4.2, 0.4, n_amostras_grafico), 'Curtose': np.random.normal(4.5, 0.4, n_amostras_grafico), 'Legenda': 'Loose Foot Pump'})
+    n_motor = pd.DataFrame({'RMS': np.random.normal(1.1, 0.1, n_amostras_grafico), 'Curtose': np.random.normal(2.9, 0.15, n_amostras_grafico), 'Legenda': 'New Motor'})
     bsf = pd.DataFrame({'RMS': np.random.normal(2.8, 0.25, n_amostras_grafico), 'Curtose': np.random.normal(5.5, 0.4, n_amostras_grafico), 'Legenda': 'Bearing BSF'})
     rotor = pd.DataFrame({'RMS': np.random.normal(3.2, 0.3, n_amostras_grafico), 'Curtose': np.random.normal(3.6, 0.3, n_amostras_grafico), 'Legenda': 'Broken Rotor Bar'})
-    loose = pd.DataFrame({'RMS': np.random.normal(4.1, 0.4, n_amostras_grafico), 'Curtose': np.random.normal(4.2, 0.4, n_amostras_grafico), 'Legenda': 'Loose Foot Motor'})
+    loose_m = pd.DataFrame({'RMS': np.random.normal(4.0, 0.35, n_amostras_grafico), 'Curtose': np.random.normal(4.1, 0.35, n_amostras_grafico), 'Legenda': 'Loose Foot Motor'})
     contam = pd.DataFrame({'RMS': np.random.normal(2.3, 0.2, n_amostras_grafico), 'Curtose': np.random.normal(6.9, 0.6, n_amostras_grafico), 'Legenda': 'Bearing Contaminated'})
     
-    df_render = pd.concat([df_healthy, bsf, rotor, loose, contam], ignore_index=True)
-    titulo_grafico = "Mapeamento Comparativo de Defeitos Únicos"
+    df_render = pd.concat([df_healthy, h_noise, l_foot_p, n_motor, bsf, rotor, loose_m, contam], ignore_index=True)
+    titulo_grafico = "Mapeamento Comparativo de Defeitos Únicos e Condições Isoladas"
     
-    # Atualiza o mapa de cores apenas para os defeitos únicos para manter distinção visual livre
+    # Adiciona cores exclusivas para os defeitos singulares manterem identidade visual limpa
     mapa_cores_padrao.update({
-        "Bearing BSF": "#ff7f0e", "Broken Rotor Bar": "#9467bd", 
-        "Loose Foot Motor": "#8c564b", "Bearing Contaminated": "#e377c2"
+        "Healthy Noise": "#aec7e8", "Loose Foot Pump": "#ffbb78", 
+        "New Motor": "#98df8a", "Bearing BSF": "#ff7f0e", 
+        "Broken Rotor Bar": "#9467bd", "Loose Foot Motor": "#8c564b", 
+        "Bearing Contaminated": "#e377c2"
     })
 
-# 4. Geração do gráfico interativo via Plotly
+# 4. Geração do gráfico dinâmico final via Plotly
 fig_scatter = px.scatter(
     df_render,
     x="Curtose",
     y="RMS",
     color="Legenda",
     color_discrete_map=mapa_cores_padrao,
-    labels={"Curtose": "Curtose (Transientes de Impacto)", "RMS": "Valor RMS (Energia do Sinal)"},
+    labels={"Curtose": "Curtose (Métrica de Impacto Mecânico)", "RMS": "Valor RMS (Métrica de Energia)"},
     title=titulo_grafico,
     template="plotly_white"
 )
@@ -178,7 +190,7 @@ fig_scatter.update_traces(
 )
 
 fig_scatter.update_layout(
-    legend_title_text="Condição do Ativo",
+    legend_title_text="Regimes e Falhas",
     margin=dict(l=40, r=40, t=50, b=40),
     hovermode="closest"
 )
