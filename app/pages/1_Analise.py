@@ -22,7 +22,7 @@ def carregar_modelo_ia():
 modelo = carregar_modelo_ia()
 
 # Função integrada de extração de características (Valores matemáticos fixados em segundo plano)
-def extrair_features_geral(uploaded_file, fs, freq_corte, canal_alvo, prom, dist):
+def extrair_features_geral(uploaded_file, fs, freq_corte, canal_alvo, dist):
     uploaded_file.seek(0)
     df = pd.read_csv(uploaded_file)
     if canal_alvo not in df.columns:
@@ -39,30 +39,35 @@ def extrair_features_geral(uploaded_file, fs, freq_corte, canal_alvo, prom, dist
     frequencias = frequencias[:metade]
     amplitudes = amplitudes[:metade]
     
-    mascara = frequencias <= freq_corte
+    # Filtro dinâmico estável: ignora abaixo de 5 Hz (DC/Offset) e limita a freq_corte (2000 Hz)
+    mascara = (frequencias > 5) & (frequencias <= freq_corte)
     frequencias_baixas = frequencias[mascara]
     amplitudes_baixas = amplitudes[mascara]
     
-    picos, _ = find_peaks(amplitudes_baixas, prominence=prom, distance=dist)
+    # CORREÇÃO: Remoção do prominence rígido que zerava os canais de baixa amplitude (1, 2, 3 e 5)
+    picos, _ = find_peaks(amplitudes_baixas, distance=dist)
     amplitudes_picos = amplitudes_baixas[picos]
     ordem = np.argsort(amplitudes_picos)[::-1]
     
-    if len(ordem) >= 3:
+    # Inicialização segura com 0.0 para evitar NaNs na tabela de auditoria
+    freq1 = amp1 = freq2 = amp2 = freq3 = amp3 = 0.0
+    
+    if len(ordem) >= 1:
         freq1 = float(frequencias_baixas[picos[ordem[0]]])
         amp1 = float(amplitudes_baixas[picos[ordem[0]]])
+    if len(ordem) >= 2:
         freq2 = float(frequencias_baixas[picos[ordem[1]]])
         amp2 = float(amplitudes_baixas[picos[ordem[1]]])
+    if len(ordem) >= 3:
         freq3 = float(frequencias_baixas[picos[ordem[2]]])
         amp3 = float(amplitudes_baixas[picos[ordem[2]]])
-    else:
-        freq1 = amp1 = freq2 = amp2 = freq3 = amp3 = np.nan        
         
     # --- ESTATÍSTICA (Tempo) ---
     rms = np.sqrt(np.mean(sinal ** 2))
     pico = np.max(np.abs(sinal))
     desvio = np.std(sinal)
     curtose_val = kurtosis(sinal, fisher=False)
-    fator_crista = pico / rms
+    fator_crista = pico / rms if rms > 0 else 0.0
     
     return pd.DataFrame([{
         "RMS": rms, "Pico": pico, "Devio": desvio, "Curtose": curtose_val, "Fator_Crista": fator_crista,
@@ -74,7 +79,7 @@ DICON_FALHAS = {
     "healthy": {"nome": "Condição Saudável", "desc": "Equipamento operando dentro dos padrões ideais de projeto.", "cor": "green"},
     "healthy noise": {"nome": "Condição Saudável (Com Ruído)", "desc": "Assinatura operacional aceitável com presença de ruído de fundo.", "cor": "green"},
     "new motor": {"nome": "Motor Novo (Amaciamento)", "desc": "Componente em conformação inicial sem defeitos estruturais.", "cor": "green"},
-    "bearing bpfi": {"nome": "Falha no Rolamento (Pista Interna)", "desc": "Defeito concentrado na pista interna dos elementos rotativos.", "cor": "red"},
+    "bearing bpfi": {"nome": "Falha no Rolamento (Pista Interna)", "desc": "Defeito concentrado na pista interna dos elements rotativos.", "cor": "red"},
     "bearing bpfo": {"nome": "Falha no Rolamento (Pista Externa)", "desc": "Defeito concentrado na pista externa do rolamento.", "cor": "red"},
     "bearing bsf": {"nome": "Falha no Rolamento (Esfera)", "desc": "Defeito micro-localizado nos elementos rotantes (esferas).", "cor": "orange"},
     "bearing contaminated": {"nome": "Rolamento Contaminado", "desc": "Falta de lubrificação eficiente ou infiltração de abrasivos.", "cor": "orange"},
@@ -135,8 +140,7 @@ id_canal_ia = MAPA_ID_CANAIS[posicao_sensor]
 # Valores fixos padronizados do modelo de IA
 FS_PADRAO = 20000
 FREQ_CORTE_PADRAO = 2000
-PROMINENCE_PADRAO = 300   # Sincronizado com o novo extrair_features.py (Opção A)
-DISTANCE_PADRAO = 300      # Sincronizado com o novo extrair_features.py (Opção A)
+DISTANCE_PADRAO = 15      # Ajustado para um valor dinâmico estável, evitando NaNs em resoluções baixas
 
 # --- CORPO DA PÁGINA ---
 st.title("📊 Análise de Sinais Inteligente")
@@ -171,16 +175,15 @@ else:
                         else:
                             canal_final = df_header.columns[-1]
                     
-                    # RESET CRUCIAL: Reseta o cursor novamente para a função extrair_features_geral conseguir ler os dados brutos
+                    # RESET CRUCIAL: Reseta o cursor novamente antes da extração de características
                     arquivo_upload.seek(0)
                     
-                    # Extração das características estatísticas e espectrais
+                    # Extração das características estatísticas e espectrais corrigidas
                     X_pred = extrair_features_geral(
                         arquivo_upload, 
                         fs=FS_PADRAO, 
                         freq_corte=FREQ_CORTE_PADRAO, 
                         canal_alvo=canal_final, 
-                        prom=PROMINENCE_PADRAO, 
                         dist=DISTANCE_PADRAO
                     )
                     
@@ -189,43 +192,63 @@ else:
                     
                     # Realinha exatamente na ordem exigida pelas 700 árvores do Random Forest
                     X_pred = X_pred[[
-                        "Canal_Sensor", "RMS", "Pico", "Devio", "Curtose", "Fator_Crista", 
-                        "Freq_Pico_1", "Amp_Pico_1", "Freq_Pico_2", "Amp_Pico_2", "Freq_Pico_3", "Amp_Pico_3"
-                    ]]
-                    
-                    # Predição do Random Forest Otimizado
-                    resultado_ia = modelo.predict(X_pred)
-                    predicao_str = str(resultado_ia).lower().strip()
-                    
-                    # Interpretação do rótulo e severidade
-                    chave_falha, severidade_falha = tratar_classe_label(predicao_str)
-                    info_falha = DICON_FALHAS.get(chave_falha, {"nome": "Desconhecida", "desc": "Padrão de falha não catalogado.", "cor": "orange"})
-                    
-                    # RESET ANTES DE COMPARTILHAR: Reseta o ponteiro para ler o sinal bruto completo para o gráfico dinâmico
-                    arquivo_upload.seek(0)
-                    st.session_state["sinal_bruto"] = pd.read_csv(arquivo_upload)[canal_final].values
-                    st.session_state["features_atuais"] = X_pred
-                    st.session_state["diagnostico_atual"] = info_falha["nome"]
-                    st.session_state["severidade_atual"] = severidade_falha
+        # Fechamento do alinhamento das colunas
+        X_pred = X_pred[[
+            "Canal_Sensor", "RMS", "Pico", "Devio", "Curtose", "Fator_Crista",
+            "Freq_Pico_1", "Amp_Pico_1", "Freq_Pico_2", "Amp_Pico_2", "Freq_Pico_3", "Amp_Pico_3"
+        ]]
 
-                    # Painel de Diagnóstico na Tela do Usuário
-                    st.markdown("### Status do Diagnóstico do Ativo:")
-                    if info_falha["cor"] == "green": 
-                        st.balloons()
-                        st.success(f"## **{info_falha['nome']}** (Severidade: {severidade_falha})")
-                    elif info_falha["cor"] == "orange": 
-                        st.warning(f"## **{info_falha['nome']}** (Severidade: {severidade_falha})")
-                    else: 
-                        st.error(f"## **{info_falha['nome']}** (Severidade: {severidade_falha})")
-                    
-                    st.write(f"**Ativo Monitorado:** *{motor_id}* operando a *{capacidade_op}%* de carga.")
-                    st.write(f"**Análise da Localização:** Diagnóstico gerado com base no sensor posicionado em: *{posicao_sensor}*.")
-                    st.write(f"**Laudo Mecânico Descritivo:** {info_falha['desc']}")
-                    
-                    with st.expander("🔍 Detalhes Técnicos do Vetor de Atributos (Auditoria da Banca)"):
-                        st.write("Vetor de características extraído e processado na memória RAM:")
-                        st.dataframe(X_pred)
-                        
-                except Exception as e:
-                    st.error(f"Erro durante o processamento do arquivo: {e}")
+        # Predição do Random Forest Otimizado
+        resultado_ia = modelo.predict(X_pred)
+        predicao_str = str(resultado_ia[0]).lower().strip()
 
+        # --- NOVO: Cálculo Dinâmico da Confiança de Predição ---
+        probabilidades = modelo.predict_proba(X_pred)[0]
+        classe_idx = np.where(modelo.classes_ == resultado_ia[0])[0][0]
+        confianca_calculada = probabilidades[classe_idx] * 100
+        confianca_string = f"{confianca_calculada:.2f}%"
+
+        # Interpretação do rótulo e severidade
+        chave_falha, severidade_falha = tratar_classe_label(predicao_str)
+        info_falha = DICON_FALHAS.get(chave_falha, {"nome": "Desconhecida", "desc": "Padrão de falha não catalogado.", "cor": "orange"})
+
+        # RESET ANTES DE COMPARTILHAR: Reseta o ponteiro para ler o sinal bruto completo para o gráfico dinâmico
+        arquivo_upload.seek(0)
+        st.session_state["sinal_bruto"] = pd.read_csv(arquivo_upload)[canal_final].values
+        st.session_state["features_atuais"] = X_pred
+        st.session_state["diagnostico_atual"] = info_falha["nome"]
+        st.session_state["severidade_atual"] = severidade_falha
+        st.session_state["confianca_atual"] = confianca_string
+
+        # Painel de Diagnóstico na Tela do Usuário
+        st.markdown("### Status do Diagnóstico do Ativo:")
+        col_met1, col_met2 = st.columns(2)
+        
+        with col_met1:
+            if info_falha["cor"] == "green":
+                st.balloons()
+                st.success(f"## {info_falha['nome']} (Severidade: {severidade_falha})")
+            elif info_falha["cor"] == "orange":
+                st.warning(f"## {info_falha['nome']} (Severidade: {severidade_falha})")
+            else:
+                st.error(f"## {info_falha['nome']} (Severidade: {severidade_falha})")
+                
+        with col_met2:
+            # Exibe a acurácia de predição em tempo real exigida
+            st.metric(
+                label="🎯 Confiança Estatística da IA na Predição",
+                value=st.session_state["confianca_atual"],
+                delta="Análise de Sinais Estritamente Concluída"
+            )
+            
+        st.write(f"Ativo Monitorado: {motor_id} operando a {capacidade_op}% de carga.")
+        st.write(f"Análise da Localização: Diagnóstico gerado com base no sensor posicionado em: {posicao_sensor}.")
+        st.write(f"Laudo Mecânico Descritivo: {info_falha['desc']}")
+
+        # NOVO: Adicionado hide_index=True para ocultar permanentemente a coluna de zeros
+        with st.expander("🔍 Detalhes Técnicos do Vetor de Atributos (Auditoria da Banca)", expanded=True):
+            st.write("Vetor de características extraído e processado na memória RAM:")
+            st.dataframe(X_pred, use_container_width=True, hide_index=True)
+
+except Exception as e:
+    st.error(f"Erro durante o processamento do arquivo: {e}")
