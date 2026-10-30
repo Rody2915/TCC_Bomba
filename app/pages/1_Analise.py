@@ -79,7 +79,7 @@ DICON_FALHAS = {
     "healthy": {"nome": "Condição Saudável", "desc": "Equipamento operando dentro dos padrões ideais de projeto.", "cor": "green"},
     "healthy noise": {"nome": "Condição Saudável (Com Ruído)", "desc": "Assinatura operacional aceitável com presença de ruído de fundo.", "cor": "green"},
     "new motor": {"nome": "Motor Novo (Amaciamento)", "desc": "Componente em conformação inicial sem defeitos estruturais.", "cor": "green"},
-    "bearing bpfi": {"nome": "Falha no Rolamento (Pista Interna)", "desc": "Defeito concentrado na pista interna dos elements rotativos.", "cor": "red"},
+    "bearing bpfi": {"nome": "Falha no Rolamento (Pista Interna)", "desc": "Defeito concentrado na pista interna dos elementos rotativos.", "cor": "red"},
     "bearing bpfo": {"nome": "Falha no Rolamento (Pista Externa)", "desc": "Defeito concentrado na pista externa do rolamento.", "cor": "red"},
     "bearing bsf": {"nome": "Falha no Rolamento (Esfera)", "desc": "Defeito micro-localizado nos elementos rotantes (esferas).", "cor": "orange"},
     "bearing contaminated": {"nome": "Rolamento Contaminado", "desc": "Falta de lubrificação eficiente ou infiltração de abrasivos.", "cor": "orange"},
@@ -192,24 +192,24 @@ else:
                     
                     # Realinha exatamente na ordem exigida pelas 700 árvores do Random Forest
                     X_pred = X_pred[[
-                        "Canal_Sensor", "RMS", "Pico", "Devio", "Curtose", "Fator_Crista",
+                        "Canal_Sensor", "RMS", "Pico", "Devio", "Curtose", "Fator_Crista", 
                         "Freq_Pico_1", "Amp_Pico_1", "Freq_Pico_2", "Amp_Pico_2", "Freq_Pico_3", "Amp_Pico_3"
                     ]]
-
+                    
                     # Predição do Random Forest Otimizado
                     resultado_ia = modelo.predict(X_pred)
                     predicao_str = str(resultado_ia[0]).lower().strip()
-
+                    
                     # --- NOVO: Cálculo Dinâmico da Confiança de Predição ---
                     probabilidades = modelo.predict_proba(X_pred)[0]
                     classe_idx = np.where(modelo.classes_ == resultado_ia[0])[0][0]
                     confianca_calculada = probabilidades[classe_idx] * 100
                     confianca_string = f"{confianca_calculada:.2f}%"
-
+                    
                     # Interpretação do rótulo e severidade
                     chave_falha, severidade_falha = tratar_classe_label(predicao_str)
                     info_falha = DICON_FALHAS.get(chave_falha, {"nome": "Desconhecida", "desc": "Padrão de falha não catalogado.", "cor": "orange"})
-
+                    
                     # RESET ANTES DE COMPARTILHAR: Reseta o ponteiro para ler o sinal bruto completo para o gráfico dinâmico
                     arquivo_upload.seek(0)
                     st.session_state["sinal_bruto"] = pd.read_csv(arquivo_upload)[canal_final].values
@@ -220,33 +220,33 @@ else:
 
                     # Painel de Diagnóstico na Tela do Usuário
                     st.markdown("### Status do Diagnóstico do Ativo:")
+                    
                     col_met1, col_met2 = st.columns(2)
-        
                     with col_met1:
-                        if info_falha["cor"] == "green":
+                        if info_falha["cor"] == "green": 
                             st.balloons()
                             st.success(f"## {info_falha['nome']} (Severidade: {severidade_falha})")
-                        elif info_falha["cor"] == "orange":
+                        elif info_falha["cor"] == "orange": 
                             st.warning(f"## {info_falha['nome']} (Severidade: {severidade_falha})")
-                        else:
+                        else: 
                             st.error(f"## {info_falha['nome']} (Severidade: {severidade_falha})")
-                
+                    
                     with col_met2:
                         # Exibe a acurácia de predição em tempo real exigida
                         st.metric(
-                            label="🎯 Confiança Estatística da IA na Predição",
+                            label="🎯 Confiança Estatística da IA na Predição", 
                             value=st.session_state["confianca_atual"],
                             delta="Análise de Sinais Estritamente Concluída"
                         )
-            
+                    
                     st.write(f"Ativo Monitorado: {motor_id} operando a {capacidade_op}% de carga.")
                     st.write(f"Análise da Localização: Diagnóstico gerado com base no sensor posicionado em: {posicao_sensor}.")
                     st.write(f"Laudo Mecânico Descritivo: {info_falha['desc']}")
-
+                    
                     # NOVO: Adicionado hide_index=True para ocultar permanentemente a coluna de zeros
                     with st.expander("🔍 Detalhes Técnicos do Vetor de Atributos (Auditoria da Banca)", expanded=True):
                         st.write("Vetor de características extraído e processado na memória RAM:")
                         st.dataframe(X_pred, use_container_width=True, hide_index=True)
-
-            except Exception as e:
-                st.error(f"Erro durante o processamento do arquivo: {e}")
+                        
+                except Exception as e:
+                    st.error(f"Erro durante o processamento do arquivo: {e}")
