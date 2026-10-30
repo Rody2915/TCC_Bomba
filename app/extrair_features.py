@@ -29,7 +29,7 @@ def extrair_features_matriz(caminho_arquivo):
     resultados = []
     fs = 20000
 
-    # Percorre as 15 janelas temporais de medição do arquivo
+    # Percorre as janelas temporais de medição do arquivo
     for coluna in df.columns[1:]:
         sinal = df[coluna]
         
@@ -42,34 +42,40 @@ def extrair_features_matriz(caminho_arquivo):
         frequencias = frequencias[:metade]
         amplitudes = amplitudes[:metade]
         
-        mascara = frequencias <= 2000
+        # Ignora a frequência abaixo de 5 Hz (DC component/Offset) e filtra até 2000 Hz
+        mascara = (frequencias > 5) & (frequencias <= 2000)
         frequencias_baixas = frequencias[mascara]
         amplitudes_baixas = amplitudes[mascara]
         
-        # OTIMIZAÇÃO A: Parâmetros refinados para mitigar NaNs e capturar picos finos de rolamento
-        picos, _ = find_peaks(amplitudes_baixas, prominence=300, distance=300)
+        # OTIMIZAÇÃO: Removeu 'prominence' rígido para não zerar canais secundários de baixa amplitude
+        # distance=15 pontos impede que o algoritmo repita ou pegue pontos vizinhos do mesmo pico
+        picos, _ = find_peaks(amplitudes_baixas, distance=15)
         amplitudes_picos = amplitudes_baixas[picos]
         ordem = np.argsort(amplitudes_picos)[::-1]
         
-        if len(ordem) >= 3:
+        # Inicializa com 0.0 para garantir preenchimento numérico sem quebrar com NaNs/None
+        freq1 = amp1 = freq2 = amp2 = freq3 = amp3 = 0.0
+        
+        # Atribuição dinâmica e segura dependendo de quantos picos reais foram encontrados
+        if len(ordem) >= 1:
             freq1 = float(frequencias_baixas[picos[ordem[0]]])
             amp1 = float(amplitudes_baixas[picos[ordem[0]]])
+        if len(ordem) >= 2:
             freq2 = float(frequencias_baixas[picos[ordem[1]]])
             amp2 = float(amplitudes_baixas[picos[ordem[1]]])
+        if len(ordem) >= 3:
             freq3 = float(frequencias_baixas[picos[ordem[2]]])
             amp3 = float(amplitudes_baixas[picos[ordem[2]]])
-        else:
-            freq1 = amp1 = freq2 = amp2 = freq3 = amp3 = np.nan        
         
         # --- ESTATÍSTICA MATEMÁTICA (Domínio do Tempo) ---
         rms = np.sqrt(np.mean(sinal ** 2))
         pico = np.max(np.abs(sinal))
         desvio = np.std(sinal)
         curtose_val = kurtosis(sinal, fisher=False)
-        fator_crista = pico / rms
+        fator_crista = pico / rms if rms > 0 else 0.0
         
         resultados.append({
-            "RMS": rms, "Pico": pico, "Devio": desvio, # Mantido 'Devio' se sua tabela usar essa grafia
+            "RMS": rms, "Pico": pico, "Devio": desvio, # Mantido 'Devio' conforme sua tabela
             "Curtose": curtose_val, "Fator_Crista": fator_crista,
             "Freq_Pico_1": freq1, "Amp_Pico_1": amp1,
             "Freq_Pico_2": freq2, "Amp_Pico_2": amp2,
@@ -77,6 +83,7 @@ def extrair_features_matriz(caminho_arquivo):
         })
 
     return pd.DataFrame(resultados)
+
 
 # ==============================================================================
 # 3. CONSTRUÇÃO AUTOMATIZADA COMPLETA DO DATASET (24 CLASSES DE SEVERIDADE)
